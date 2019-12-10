@@ -2,27 +2,40 @@ module MyPod
     class MyPodFile
         class DSL
             require 'open3'
-
-            # attr_accessor 
+            require 'yaml'
+            @@h ||= {}
 
             def repo(name = nil, **requirements)
-                # stdout_str, stdout_error, status = Open3.capture3("git clone #{requirements[:source]}")
                 root_dir = Pathname.pwd
+                lockfile_data = nil
+
+                if File.exists?("Mypodfile.lock")
+                    lockfile_data = YAML::load_file("Mypodfile.lock")
+                end
                 
                 if Dir.exists?(name)
-                    Dir.chdir("#{name}")
-                    stdout_str, status = Open3.capture2("git pull origin #{requirements[:branch]}")
-                    # p stdout_str
-                    Dir.chdir(root_dir)
+                    # Common pull
+                    if lockfile_data[name][:branch] == requirements[:branch]
+                        Dir.chdir("#{name}")
+                        stdout_str, status = Open3.capture2("git pull origin #{requirements[:branch]}")
+                        Dir.chdir(root_dir)
+                    else
+                        # Pull when branch changes
+                        Dir.chdir("#{name}")
+                        stdout_str, status = Open3.capture2("git fetch && git checkout #{requirements[:branch]} && git pull origin #{requirements[:branch]}")
+                        lockfile_data[name][:branch] = requirements[:branch]
+                        Dir.chdir(root_dir)
+                        File.open("Mypodfile.lock", "w") { |file| file.write(lockfile_data.to_yaml) }
+                    end
                 else
                     stdout_str, status = Open3.capture2("git clone #{requirements[:source]}")
-                    # p stdout_str
-                    
+        
                     if status.success?
                         Dir.chdir("#{name}")
-                        stdout_str, status = Open3.capture2("git fetch && git checkout -b #{requirements[:branch]} && git pull --allow-unrelated-histories origin #{requirements[:branch]}")
+                        stdout_str, status = Open3.capture2("git fetch && git checkout #{requirements[:branch]} && git pull origin #{requirements[:branch]}")
                         Dir.chdir(root_dir)
-                        # p stdout_str
+                        @@h[name] = name
+                        @@h[name] = requirements
                     end
                 end
             end
@@ -30,12 +43,12 @@ module MyPod
             # abstract to installer class
             def mypods
                 yield if block_given?
+                File.open("Mypodfile.lock", "a") { |file| file.write(@@h.to_yaml) }
             end
 
             def self.load(filename)
                 dsl = new
                 dsl.instance_eval(File.read(filename))
-                dsl
             end
         end
     end
