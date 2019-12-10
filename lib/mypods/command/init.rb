@@ -23,7 +23,7 @@ module MyPod
                 mypodfile = <<~RUBY
                     mypods do
                         # Repo here
-                        repo 'name', :source => 'url_github', :branch => 'branch_to_sync'
+                        # repo 'name', :source => 'url_github', :branch => 'branch_to_sync'
                     end
                 RUBY
                 mypodfile
