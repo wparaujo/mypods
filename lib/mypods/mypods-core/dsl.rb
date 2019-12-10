@@ -15,7 +15,7 @@ module MyPod
                 
                 if Dir.exists?(name)
                     # Common pull
-                    if lockfile_data[name][:branch] == requirements[:branch]
+                    if !lockfile_data && lockfile_data[name][:branch] == requirements[:branch]
                         Dir.chdir("#{name}")
                         stdout_str, status = Open3.capture2("git pull origin #{requirements[:branch]}")
                         Dir.chdir(root_dir)
@@ -34,8 +34,19 @@ module MyPod
                         Dir.chdir("#{name}")
                         stdout_str, status = Open3.capture2("git fetch && git checkout #{requirements[:branch]} && git pull origin #{requirements[:branch]}")
                         Dir.chdir(root_dir)
-                        @@h[name] = name
-                        @@h[name] = requirements
+
+                        # if repos added after first install in Mypodfile
+                        if File.exists?("Mypodfile.lock")
+                            lockfile = nil
+                            lockfile = YAML::load_file("Mypodfile.lock")
+                            lockfile[name] = name
+                            lockfile[name] = requirements
+                            puts lockfile
+                            File.open("Mypodfile.lock", "w") { |file| file.write(lockfile.to_yaml) }
+                        else
+                            @@h[name] = name
+                            @@h[name] = requirements
+                        end
                     end
                 end
             end
@@ -43,7 +54,9 @@ module MyPod
             # abstract to installer class
             def mypods
                 yield if block_given?
-                File.open("Mypodfile.lock", "a") { |file| file.write(@@h.to_yaml) }
+                if !@@h.empty?
+                    File.open("Mypodfile.lock", "a") { |file| file.write(@@h.to_yaml) }
+                end
             end
 
             def self.load(filename)
