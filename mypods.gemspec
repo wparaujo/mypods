@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
     s.name        = 'mypods'
-    s.version     = '0.0.0'
+    s.version     = '0.1.0'
     s.date        = '2019-12-08'
     s.summary     = "Local Development Pods Manager"
     s.description = "Mypods manages the synchronization of various developing local pods with " \
